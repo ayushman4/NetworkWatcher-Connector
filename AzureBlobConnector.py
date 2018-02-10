@@ -39,6 +39,7 @@ def connect_to_blob_account(account_name,account_key):
     block_blob_service = BlockBlobService (account_name=account_name, account_key=account_key)
     blobs = block_blob_service.list_blobs("insights-logs-networksecuritygroupflowevent",marker=None)
     for b in blobs:
+        print "Data Sent from-> "+account_name
         stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent",b.name)
         data =json.loads(stream.content)
         send_json_payload_http(stream.content)
@@ -48,11 +49,12 @@ def send_json_payload_http(data):
 
     headers = {'Content-type': 'application/json'}
     print "Sending JSON data over HTTP/HTTPS"
-    response = requests.post ("http://localhost:8080/", data=data, headers=headers)
+    response = requests.post ("http://10.135.1.5:6900", data=data, headers=headers)
     print response.status_code
     if response.status_code != 200:
         print("Error in request response")
-        exit (1)
+        exit(1)
+
 
 def json_to_cef_network_watcher(data):
     print"Converting Data"
@@ -62,7 +64,7 @@ def json_to_cef_network_watcher(data):
                 for l in xrange (0, len (data['records'][i]['properties']['flows'][j]['flows'][k]['flowTuples'])):
                     flow_data = str (
                         data['records'][i]['properties']['flows'][j]['flows'][k]['flowTuples'][l]).split (",")
-                    cef_data = datetime.datetime.now ().__str__ () + " " + platform.node () + " " + "CEF:0" + "|" + "Security" + "|" + "AzureNetworkWatcher" + "|" + "1.0" + "|" + "1000000" + "|" + "NetworkWatcher Azure NSG Flow Logs" + "|" + "10" + "|" + "cs1=" + \
+                    cef_data = datetime.datetime.now ().__str__ () + " " + platform.node () + " " + "CEF:0" + "|" + "JetSecurity" + "|" + "AzureNetworkWatcher" + "|" + "1.0" + "|" + "1000000" + "|" + "NetworkWatcher Azure NSG Flow Logs" + "|" + "10" + "|" + "cs1=" + \
                                data['records'][i]['properties']['flows'][j][
                                    'rule'] + " " + "cs1Label=NSG Rule Name" + " " + "cs2=" + \
                                str (data['records'][i]['resourceId']).split ("/")[
@@ -82,12 +84,16 @@ def json_to_cef_network_watcher(data):
 
 def send_syslog(cef_data):
 
-    print "Sending Data CEF Data over Syslog"
-    my_logger = logging.getLogger ('NetworkWatcher')
-    my_logger.setLevel (logging.INFO)
-    handler = logging.handlers.SysLogHandler(address=('localhost', 514))
-    my_logger.addHandler(handler)
-    my_logger.info(cef_data)
+    try:
+        print "Sending Data CEF Data over Syslog"
+        my_logger = logging.getLogger ('NetworkWatcher')
+        my_logger.setLevel (logging.INFO)
+        handler = logging.handlers.SysLogHandler(address=('localhost', 514))
+        my_logger.addHandler(handler)
+        my_logger.info(cef_data)
+    except Exception as e:
+        print e
+        exit(1)
 
 def main():
 
@@ -99,11 +105,13 @@ def main():
         try:
             print(result.get (timeout=None))
         except:
-            print "Closing Threads"
+            print "Oops! Workers Are Leaving."
             pool.close()
+            pool.terminate ()
             pool.join()
             exit(1)
     pool.close()
+    pool.terminate ()
     pool.join()
 
 if __name__ == "__main__":
@@ -111,5 +119,5 @@ if __name__ == "__main__":
     try:
         main()
     except:
-        print "Shutting Down the Tool"
+        print "Shutting Down the Tool."
         exit(1)
