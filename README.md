@@ -13,4 +13,5 @@ Differential log push has not been implemented yet, but is a feature in the proc
 Store credentials as follows in environemnt variables or vault:
 
 blob_account_name= StorageAccount1,StorageAccount2,StorageAccount3
+
 blob_account_key = StorageAccountKey1,StorageAccountKey2,StorageAccountKey3
