@@ -97,7 +97,7 @@ def main():
     for i in range(0,len(account_name)):
         result = pool.apply_async(connect_to_blob_account, (account_name[i],account_key[i]))
         try:
-            print(result.get (timeout=10))
+            print(result.get (timeout=None))
         except:
             print "Closing Threads"
             pool.close()
