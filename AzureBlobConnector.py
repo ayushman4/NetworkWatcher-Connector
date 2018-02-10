@@ -27,7 +27,7 @@ from os import getenv
 #account_key = str(account_key).split(",")
 #account_name = str(account_name).split(",")
 
-#To store blob storage keys in plain text. Do not do this please!
+#To store blob storage keys in plain text in source code. Do not do this please!
 
 account_key = ["AccountKey1","AccountKey2","AccountKey3"]
 account_name = ["StroageAccount1","StorageAccount2","StorageAccount3"]
