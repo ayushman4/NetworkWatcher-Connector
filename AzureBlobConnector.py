@@ -37,7 +37,11 @@ proxies = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
 def connect_to_blob_account(account_name,account_key):
 
     block_blob_service = BlockBlobService (account_name=account_name, account_key=account_key)
-    blobs = block_blob_service.list_blobs("insights-logs-networksecuritygroupflowevent",marker=None)
+    try:
+        blobs = block_blob_service.list_blobs("insights-logs-networksecuritygroupflowevent",marker=None)
+    except:
+        print "Container Does not exist"
+        return
     for b in blobs:
         print "Data Sent from-> "+account_name
         stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent",b.name)
@@ -49,22 +53,26 @@ def send_json_payload_http(data):
 
     headers = {'Content-type': 'application/json'}
     print "Sending JSON data over HTTP/HTTPS"
-    response = requests.post ("http://localhost", data=data, headers=headers)
+    response = requests.post ("http://127.0.0.1", data=data, headers=headers)
     print response.status_code
-    if response.status_code != 200:
+    if response.status_code == 429:
+        print "Going to retry in "+response.headers.get("Retry-After")+" seconds"
+        retry_after = int(response.headers.get("Retry-After"))
+        time.sleep(retry_after)
+    elif response.status_code != 200 and response.status_code!=429:
         print("Error in request response")
         exit(1)
 
 
 def json_to_cef_network_watcher(data):
-    print"Converting Data"
+    print "Converting Data"
     for i in xrange (0, len (data['records'])):
         for j in xrange (0, len (data['records'][i]['properties']['flows'])):
             for k in xrange (0, len (data['records'][i]['properties']['flows'][j]['flows'])):
                 for l in xrange (0, len (data['records'][i]['properties']['flows'][j]['flows'][k]['flowTuples'])):
                     flow_data = str (
                         data['records'][i]['properties']['flows'][j]['flows'][k]['flowTuples'][l]).split (",")
-                    cef_data = datetime.datetime.now ().__str__ () + " " + platform.node () + " " + "CEF:0" + "|" + "JetSecurity" + "|" + "AzureNetworkWatcher" + "|" + "1.0" + "|" + "1000000" + "|" + "NetworkWatcher Azure NSG Flow Logs" + "|" + "10" + "|" + "cs1=" + \
+                    cef_data = datetime.datetime.now ().__str__ () + " " + platform.node () + " " + "CEF:0" + "|" + "Security" + "|" + "AzureNetworkWatcher" + "|" + "1.0" + "|" + "1000000" + "|" + "NetworkWatcher Azure NSG Flow Logs" + "|" + "10" + "|" + "cs1=" + \
                                data['records'][i]['properties']['flows'][j][
                                    'rule'] + " " + "cs1Label=NSG Rule Name" + " " + "cs2=" + \
                                str (data['records'][i]['resourceId']).split ("/")[
