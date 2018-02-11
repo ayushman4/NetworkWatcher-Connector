@@ -1,6 +1,6 @@
-# NetworkWatcher-Connector ( ELK/ArcSight | JSON/CEF | HTTP/Syslog)
+# Azure NetworkWatcher-Connector ( ELK/ArcSight | JSON/CEF | HTTP/Syslog)
 
-This connector is for Azure Network Watcher Logs which can be pushed to Logstash or ArcSight. This connector accesses to the Azure Network Watcher Logs in Blob Storage, extracts the JSON and pushes JSON payload over HTTP or CEF format over Syslog.
+This connector is for Azure Network Watcher logs which can be pushed to Logstash or ArcSight. This connector accesses the Azure Network Watcher logs in Blob Storage, extracts the JSON data and pushes the JSON payload over HTTP or converts the JSON payload to CEF format and pushes it over Syslog.
 
 The JSON over HTTP payload has been tested to be pushed to an ELK stack
 
