@@ -49,7 +49,7 @@ def send_json_payload_http(data):
 
     headers = {'Content-type': 'application/json'}
     print "Sending JSON data over HTTP/HTTPS"
-    response = requests.post ("http://10.135.1.5:6900", data=data, headers=headers)
+    response = requests.post ("http://localhost", data=data, headers=headers)
     print response.status_code
     if response.status_code != 200:
         print("Error in request response")
