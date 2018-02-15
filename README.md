@@ -8,7 +8,7 @@ The CEF over Syslog has been tested to be pushed to ArcSight
 
 Storage Account credentials can be stored and accessed from HashiCorp Vault, Environemnt Variables or from the source code :P
 
-Differential log push has not been implemented yet, but is a feature in the process to be implemented. At this point the tool goes through all the logs and pushes it.
+Differential log push has been implemented yet through the a key,value(account name,[blobs visited]) format in a yaml file, which wil also have the option to use a NoSQL instance.
 
 Store credentials as follows in environemnt variables or vault:
 
