@@ -8,6 +8,7 @@ import datetime
 import hvac
 import platform
 from os import getenv
+import yaml
 
 #To be used with hashicorp valut for blob key storage
 
@@ -35,25 +36,34 @@ account_name = ["StroageAccount1","StorageAccount2","StorageAccount3"]
 proxies = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
 
 def connect_to_blob_account(account_name,account_key):
-
+    
+    traversed_state_data = []
     block_blob_service = BlockBlobService (account_name=account_name, account_key=account_key)
+    global accessed_accounts_blobs
+    if accessed_accounts_blobs.has_key(account_name) and accessed_accounts_blobs != None:
+        traversed_state_data =  accessed_accounts_blobs.get(account_name)
     try:
         blobs = block_blob_service.list_blobs("insights-logs-networksecuritygroupflowevent",marker=None)
+        blobs_name = []
     except:
         print "Container Does not exist"
         return
     for b in blobs:
-        print "Data Sent from-> "+account_name
-        stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent",b.name)
-        data =json.loads(stream.content)
-        send_json_payload_http(stream.content)
-        json_to_cef_network_watcher(data)
+        if b.name not in traversed_state_data:
+            print "Data Sent from-> "+account_name
+            blobs_name.append (b.name)
+            stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent",b.name)
+            data =json.loads(stream.content)
+            #send_json_payload_http(stream.content)
+            json_to_cef_network_watcher(data)
+    write_visited_blobs_to_file (account_name, blobs_name)
+
 
 def send_json_payload_http(data):
 
     headers = {'Content-type': 'application/json'}
     print "Sending JSON data over HTTP/HTTPS"
-    response = requests.post ("http://127.0.0.1", data=data, headers=headers)
+    response = requests.post ("http://localhost:6900", data=data, headers=headers)
     print response.status_code
     if response.status_code == 429:
         print "Going to retry in "+response.headers.get("Retry-After")+" seconds"
@@ -61,11 +71,11 @@ def send_json_payload_http(data):
         time.sleep(retry_after)
     elif response.status_code != 200 and response.status_code!=429:
         print("Error in request response")
-        exit(1)
+        return
 
 
 def json_to_cef_network_watcher(data):
-    print "Converting Data"
+    print"Converting Data"
     for i in xrange (0, len (data['records'])):
         for j in xrange (0, len (data['records'][i]['properties']['flows'])):
             for k in xrange (0, len (data['records'][i]['properties']['flows'][j]['flows'])):
@@ -99,12 +109,19 @@ def send_syslog(cef_data):
         handler = logging.handlers.SysLogHandler(address=('localhost', 514))
         my_logger.addHandler(handler)
         my_logger.info(cef_data)
+        handler.close()
+        my_logger.removeHandler(handler)
     except Exception as e:
         print e
-        exit(1)
+        handler.close()
+        my_logger.removeHandler (handler)
+        return
 
 def main():
 
+    global accessed_accounts_blobs
+    accessed_accounts_blobs = load_state()
+    print "Lodaded State "
     process_to_create = len(account_name)
     print "Creating "+str(process_to_create)+" proesses"
     pool = Pool(processes=process_to_create)
@@ -117,10 +134,33 @@ def main():
             pool.close()
             pool.terminate ()
             pool.join()
-            exit(1)
+            return
     pool.close()
     pool.terminate ()
     pool.join()
+    return
+
+def write_visited_blobs_to_file(account_name,blobs_name):
+    yaml_data = {account_name:blobs_name}
+    print yaml_data
+    with open ('blobs_visited_state.yaml', 'a') as outfile:
+        yaml.dump (yaml_data, outfile, default_flow_style=False)
+        outfile.close()
+
+def load_state():
+
+    mydict = {}
+    with open ("blobs_visited_state.yaml", 'w+') as stream:
+        try:
+            if yaml.load(stream) != None:
+                mydict = dict((yaml.load(stream)))
+                return mydict
+            else:
+                print type(yaml.load(stream))
+                return mydict
+        except yaml.YAMLError as exc:
+            print(exc)
+            return
 
 if __name__ == "__main__":
 
