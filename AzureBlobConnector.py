@@ -36,34 +36,36 @@ account_name = ["StroageAccount1","StorageAccount2","StorageAccount3"]
 proxies = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
 
 def connect_to_blob_account(account_name,account_key):
-    
-    traversed_state_data = []
+
+    traversed_state_data = set()
     block_blob_service = BlockBlobService (account_name=account_name, account_key=account_key)
-    global accessed_accounts_blobs
-    if accessed_accounts_blobs.has_key(account_name) and accessed_accounts_blobs != None:
+    if accessed_accounts_blobs.has_key(account_name) and accessed_accounts_blobs is not None:
         traversed_state_data =  accessed_accounts_blobs.get(account_name)
     try:
         blobs = block_blob_service.list_blobs("insights-logs-networksecuritygroupflowevent",marker=None)
-        blobs_name = []
+        blobs_name = set()
     except:
         print "Container Does not exist"
         return
     for b in blobs:
         if b.name not in traversed_state_data:
             print "Data Sent from-> "+account_name
-            blobs_name.append (b.name)
+            blobs_name.add (b.name)
             stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent",b.name)
             data =json.loads(stream.content)
-            #send_json_payload_http(stream.content)
+            send_json_payload_http(stream.content)
             json_to_cef_network_watcher(data)
-    write_visited_blobs_to_file (account_name, blobs_name)
+            print b.name
+    traversed_state_data = list(traversed_state_data)+list(blobs_name)
+    blob_data = {account_name:traversed_state_data}
+    write_visited_blobs_to_file (account_name, blob_data)
 
 
 def send_json_payload_http(data):
 
     headers = {'Content-type': 'application/json'}
     print "Sending JSON data over HTTP/HTTPS"
-    response = requests.post ("http://localhost:6900", data=data, headers=headers)
+    response = requests.post ("http://localhost", data=data, headers=headers)
     print response.status_code
     if response.status_code == 429:
         print "Going to retry in "+response.headers.get("Retry-After")+" seconds"
@@ -75,7 +77,7 @@ def send_json_payload_http(data):
 
 
 def json_to_cef_network_watcher(data):
-    
+
     print"Converting Data"
     for i in xrange (0, len (data['records'])):
         for j in xrange (0, len (data['records'][i]['properties']['flows'])):
@@ -118,50 +120,57 @@ def send_syslog(cef_data):
         my_logger.removeHandler (handler)
         return
 
+def write_visited_blobs_to_file(account_name,json_data):
+
+    filename =  account_name+".json"
+    print account_name,json_data
+    with open (filename, 'w') as outfile:
+        json.dump (json_data, outfile)
+        outfile.close()
+        return
+
+def load_state():
+
+    for name in account_name:
+        filename = name+".json"
+        if os.path.exists(filename):
+            print "Opeining filename"+" "+filename
+            with open (filename, 'r') as stream:
+                try:
+                    if stream is not None:
+                        data = (json.loads(stream.read()))
+                        value = data[name]
+                        data = {name:value}
+                        accessed_accounts_blobs.update(data)
+                        stream.close()
+                    else:
+                        print type(json.load(stream))
+                        stream.close()
+                except Exception, e:
+                    print(e)
+                    stream.close()
+                    return
+
 def main():
 
-    global accessed_accounts_blobs
-    accessed_accounts_blobs = load_state()
-    print "Lodaded State "
+    load_state()
     process_to_create = len(account_name)
     print "Creating "+str(process_to_create)+" proesses"
     pool = Pool(processes=process_to_create)
-    for i in range(0,len(account_name)):
-        result = pool.apply_async(connect_to_blob_account, (account_name[i],account_key[i]))
+    for i in range (0, len (account_name)):
+        result = pool.apply_async (connect_to_blob_account, (account_name[i], account_key[i]))
         try:
             print(result.get (timeout=None))
         except:
             print "Oops! Workers Are Leaving."
-            pool.close()
+            pool.close ()
             pool.terminate ()
-            pool.join()
+            pool.join ()
             return
     pool.close()
     pool.terminate ()
     pool.join()
     return
-
-def write_visited_blobs_to_file(account_name,blobs_name):
-    yaml_data = {account_name:blobs_name}
-    print yaml_data
-    with open ('blobs_visited_state.yaml', 'a') as outfile:
-        yaml.dump (yaml_data, outfile, default_flow_style=False)
-        outfile.close()
-
-def load_state():
-
-    mydict = {}
-    with open ("blobs_visited_state.yaml", 'w+') as stream:
-        try:
-            if yaml.load(stream) != None:
-                mydict = dict((yaml.load(stream)))
-                return mydict
-            else:
-                print type(yaml.load(stream))
-                return mydict
-        except yaml.YAMLError as exc:
-            print(exc)
-            return
 
 if __name__ == "__main__":
 
