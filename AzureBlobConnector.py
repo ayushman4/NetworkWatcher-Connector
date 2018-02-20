@@ -48,8 +48,13 @@ def connect_to_blob_account(account_name, account_key):
     for b in blobs:
         if b.name not in traversed_state_data:
             print(("Data Sent from-> " + account_name))
+            print(b.name)
             blobs_name.add(b.name)
-            stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent", b.name)
+            try:
+                stream = block_blob_service.get_blob_to_text("insights-logs-networksecuritygroupflowevent", b.name)
+            except Exception as e:
+                print(e)
+                continue
             data = json.loads(stream.content)
             # send_json_payload_http(stream.content)
             json_to_cef_network_watcher(data)
