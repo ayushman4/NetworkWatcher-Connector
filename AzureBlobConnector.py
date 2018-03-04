@@ -1,13 +1,16 @@
-from azure.storage.blob import BlockBlobService
-import requests
 import json
 from multiprocessing import Pool
+import multiprocessing
 import logging
 import logging.handlers
-import datetime
-import hvac
 import platform
+import os
+import time
 from os import getenv
+import datetime
+import requests
+from azure.storage.blob import BlockBlobService
+import hvac
 
 #To be used with hashicorp valut for blob key storage
 
@@ -159,25 +162,22 @@ def setup_data():
 
 
 def main():
-    map_data = setup_data()
     load_state()
-    process_to_create = len(account_name)
-    print(("Creating " + str(process_to_create) + " proesses"))
-    pool = Pool(processes=process_to_create)
-    result = pool.starmap_async(connect_to_blob_account,map_data)
-    try:
-        print((result.get(timeout=None)))
-    except:
-        print("Oops! Workers Are Leaving.")
-        pool.close()
-        pool.terminate()
-        pool.join()
-        return
+    pool = Pool(processes=multiprocessing.cpu_count())
+    for i in range(0, len(account_name)):
+        result = pool.apply_async(connect_to_blob_account, (account_name[i], account_key[i]))
+        try:
+            print(result.get (timeout=None))
+        except:
+            print("Oops! Workers Are Leaving.")
+            pool.close()
+            pool.terminate()
+            pool.join()
+            return
     pool.close()
     pool.terminate()
     pool.join()
     return
-
 
 if __name__ == "__main__":
     try:
