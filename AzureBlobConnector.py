@@ -1,6 +1,5 @@
 import json
-from multiprocessing import Pool
-import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import logging.handlers
 import platform
@@ -163,20 +162,8 @@ def setup_data():
 
 def main():
     load_state()
-    pool = Pool(processes=multiprocessing.cpu_count())
-    for i in range(0, len(account_name)):
-        result = pool.apply_async(connect_to_blob_account, (account_name[i], account_key[i]))
-        try:
-            print(result.get (timeout=None))
-        except:
-            print("Oops! Workers Are Leaving.")
-            pool.close()
-            pool.terminate()
-            pool.join()
-            return
-    pool.close()
-    pool.terminate()
-    pool.join()
+    with ThreadPoolExecutor(max_workers=64) as executor:
+        executor.map(connect_to_blob_account,account_name,account_key)
     return
 
 if __name__ == "__main__":
