@@ -112,14 +112,17 @@ def json_to_cef_network_watcher(data):
 def send_syslog(cef_data):
     print(cef_data)
     try:
-        with logging.getLogger('NetworkWatcher') as my_logger:
-            my_logger.setLevel(logging.INFO)
-            with logging.handlers.SysLogHandler(
-                    address=('127.0.0.1', 514)) as handler:
-                my_logger.addHandler(handler)
-                my_logger.info(cef_data)
+        my_logger = logging.getLogger('NetworkWatcher')
+        my_logger.setLevel(logging.INFO)
+        handler= logging.handlers.SysLogHandler(address=('127.0.0.1', 514))
+        my_logger.addHandler(handler)
+        my_logger.info(cef_data)
+        my_logger.removeHandler(handler)
+        handler.close()
     except Exception as e:
         print(e)
+        my_logger.removeHandler(handler)
+        handler.close()
         return
 
 
