@@ -1,5 +1,6 @@
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
+import multiprocessing
 import logging
 import logging.handlers
 import platform
@@ -127,6 +128,11 @@ def send_syslog(cef_data):
 
 
 def main():
+    with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as pools:
+        pools.submit(multi_thread_func)
+
+
+def multi_thread_func():
     logging.basicConfig(filename="network_watcher.log", level=logging.ERROR)
     with ThreadPoolExecutor(max_workers=64) as executor:
         executor.map(connect_to_blob_account, account_name, account_key)
