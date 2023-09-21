@@ -7,7 +7,7 @@ azure-storage-nspkg==3.0.0
 certifi==2023.7.22
 cffi==1.11.4
 chardet==3.0.4
-cryptography==41.0.3
+cryptography==41.0.4
 enum34==1.1.6
 futures==3.2.0
 hvac==0.4.0
